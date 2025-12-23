@@ -1,0 +1,97 @@
+# =======================================================
+# OPCIÓN A: Si tienes Git remoto (GitHub/GitLab)
+# =======================================================
+
+# 1. Push local changes to remote
+git push origin main
+
+# 2. Conectarte al servidor y ejecutar:
+ssh root@72.62.86.94
+
+# Una vez dentro del servidor:
+cd /docker/streammaster-pro
+git pull
+chmod +x deploy-fix.sh
+./deploy-fix.sh
+
+
+# =======================================================
+# OPCIÓN B: Sin Git remoto - Comandos directos en servidor
+# =======================================================
+
+# Conectarte al servidor
+ssh root@72.62.86.94
+
+# Una vez dentro, ejecuta estos comandos uno por uno:
+
+cd /docker/streammaster-pro
+
+# Actualizar nginx/web.conf
+cat > nginx/web.conf << 'EOF'
+server {
+    listen 80;
+    server_name _;
+    
+    root /usr/share/nginx/html;
+    index index.html;
+    
+    # Habilitar listado de directorios para debugging (remover después)
+    autoindex on;
+    
+    # Panel de control y archivos estáticos
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+    
+    # CORS headers para permitir acceso desde cualquier origen
+    add_header Access-Control-Allow-Origin * always;
+    add_header Access-Control-Allow-Methods 'GET, POST, OPTIONS' always;
+    add_header Access-Control-Allow-Headers '*' always;
+    
+    # Logging mejorado
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log debug;
+}
+EOF
+
+# Actualizar docker-compose.yml (agregar web.conf)
+# Editar manualmente o ejecutar:
+sed -i '/- \.\/frontend:\/usr\/share\/nginx\/html:ro/a\      - ./nginx/web.conf:/etc/nginx/conf.d/default.conf:ro' docker-compose.yml
+
+# Detener el contenedor web
+docker stop streammaster-web
+docker rm streammaster-web
+
+# Verificar permisos
+chmod -R 755 frontend/
+
+# Reiniciar servicios
+docker-compose up -d web
+
+# Verificar archivos en el contenedor
+docker exec streammaster-web ls -lah /usr/share/nginx/html/
+
+# Ver logs
+docker logs streammaster-web --tail 30
+
+# Probar
+curl -I http://localhost
+
+
+# =======================================================
+# OPCIÓN C: Usar el script de reparación rápida
+# =======================================================
+
+ssh root@72.62.86.94
+cd /docker/streammaster-pro
+
+# Crear el script fix-web.sh
+nano fix-web.sh
+# (Copia el contenido del archivo fix-web.sh que creé)
+
+# O descarga directamente si está en Git
+git pull
+
+# Ejecutar
+chmod +x fix-web.sh
+./fix-web.sh

@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StreamMaster Pro - En Vivo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        #container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #video-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            position: relative;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .controls {
+            background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.9) 100%);
+            padding: 20px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        #container:hover .controls {
+            opacity: 1;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .live-badge {
+            background: #ef4444;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.8;
+            }
+        }
+
+        .live-badge::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            animation: blink 1.5s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        .info {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .offline {
+            text-align: center;
+            color: white;
+            padding: 60px 20px;
+            max-width: 500px;
+            margin: auto;
+        }
+
+        .offline h2 {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .offline p {
+            font-size: 18px;
+            line-height: 1.6;
+            opacity: 0.8;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 30px auto;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .reconnect-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .home-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .home-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <a href="index.html" class="home-btn">← Inicio</a>
+
+        <div id="video-container">
+            <video id="video-player" playsinline></video>
+
+            <div class="controls">
+                <div class="status">
+                    <span class="live-badge" id="live-badge">EN VIVO</span>
+                    <span class="info" id="status-text">Transmisión en vivo</span>
+                </div>
+            </div>
+
+            <div id="offline-msg" class="offline" style="display: none;">
+                <h2>📡</h2>
+                <p><strong>Stream no disponible</strong></p>
+                <p>El streaming no está activo en este momento.</p>
+                <div class="spinner"></div>
+                <div class="reconnect-info">
+                    <div id="reconnect-status">Reintentando conexión...</div>
+                    <div style="margin-top: 10px; opacity: 0.7;">Intento: <span id="attempt-count">0</span>/10</div>
+                </div>
+                <div id="error-detail" class="error-message" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
+    <script>
+        // 🔧 CONFIGURACIÓN
+        const server = window.location.hostname;
+        const streamId = 'mistream'; // 🔐 Clave de stream fija
+        const hlsUrl = `http://${server}:8080/hls/${streamId}.m3u8`;
+
+        // Referencias DOM
+        const video = document.getElementById('video-player');
+        const liveBadge = document.getElementById('live-badge');
+        const statusText = document.getElementById('status-text');
+        const offlineMsg = document.getElementById('offline-msg');
+        const attemptCount = document.getElementById('attempt-count');
+        const errorDetail = document.getElementById('error-detail');
+
+        // Variables de control
+        let hls = null;
+        let reconnectAttempts = 0;
+        const MAX_RECONNECT_ATTEMPTS = 10;
+
+        // Iniciar player
+        console.log('🎬 StreamMaster Pro Player Iniciado');
+        console.log('📡 Stream URL:', hlsUrl);
+        initPlayer();
+
+        function initPlayer() {
+            if (hls) {
+                hls.destroy();
+            }
+
+            if (Hls.isSupported()) {
+                console.log('✅ HLS.js soportado');
+
+                hls = new Hls({
+                    debug: false,
+                    enableWorker: true,
+
+                    // === ULTRA BAJA LATENCIA ===
+                    lowLatencyMode: true,
+
+                    // Buffer mínimo
+                    backBufferLength: 5,
+                    maxBufferLength: 4,
+                    maxMaxBufferLength: 6,
+                    maxBufferSize: 8 * 1000 * 1000,
+                    maxBufferHole: 0.3,
+
+                    // Live Edge
+                    liveSyncDurationCount: 2,
+                    liveMaxLatencyDurationCount: 3,
+                    liveDurationInfinity: true,
+
+                    // Calidad automática
+                    startLevel: -1,
+
+                    // Reintentos de red
+                    manifestLoadingTimeOut: 10000,
+                    manifestLoadingMaxRetry: 4,
+                    manifestLoadingRetryDelay: 1000,
+
+                    levelLoadingTimeOut: 10000,
+                    levelLoadingMaxRetry: 4,
+                    levelLoadingRetryDelay: 1000,
+
+                    fragLoadingTimeOut: 20000,
+                    fragLoadingMaxRetry: 6,
+                    fragLoadingRetryDelay: 1000,
+
+                    // Progressive loading
+                    progressive: true,
+
+                    // ABR
+                    abrEwmaDefaultEstimate: 500000,
+                    abrBandWidthFactor: 0.95,
+                    abrBandWidthUpFactor: 0.7,
+
+                    // Sincronización
+                    nudgeOffset: 0.1,
+                    nudgeMaxRetry: 5,
+                    maxFragLookUpTolerance: 0.2,
+
+                    // Stalls
+                    maxStarvationDelay: 2,
+                    maxLoadingDelay: 2
+                });
+
+                hls.loadSource(hlsUrl);
+                hls.attachMedia(video);
+
+                // === EVENTOS ===
+
+                // Manifest cargado
+                hls.on(Hls.Events.MANIFEST_PARSED, function () {
+                    console.log('✅ Manifest cargado exitosamente');
+                    reconnectAttempts = 0;
+                    hideOffline();
+
+                    // Intentar reproducir
+                    video.play().catch(err => {
+                        console.log('⚠️ Autoplay bloqueado, se requiere interacción del usuario');
+                        statusText.textContent = 'Haz clic para reproducir';
+                        video.muted = true;
+                        video.addEventListener('click', () => {
+                            video.play();
+                        }, { once: true });
+                    });
+                });
+
+                // Media adjuntada
+                hls.on(Hls.Events.MEDIA_ATTACHED, function () {
+                    console.log('✅ Video element attached');
+                    video.muted = false; // Cambiar a true si quieres auto-mute
+                });
+
+                // Fragmento cargado
+                hls.on(Hls.Events.FRAG_LOADED, function () {
+                    // Mantener cerca del live edge
+                    const buffered = video.buffered;
+                    if (buffered.length > 0) {
+                        const bufferEnd = buffered.end(buffered.length - 1);
+                        const currentTime = video.currentTime;
+                        const bufferLength = bufferEnd - currentTime;
+
+                        // Si el buffer es > 8s, saltar al edge
+                        if (bufferLength > 8) {
+                            console.log('⏩ Buffer alto detectado, saltando a live edge');
+                            video.currentTime = bufferEnd - 2;
+                        }
+                    }
+                });
+
+                // === MANEJO DE ERRORES ===
+                hls.on(Hls.Events.ERROR, function (event, data) {
+                    console.warn('⚠️ HLS Error:', data.type, data.details, data);
+
+                    if (data.fatal) {
+                        console.error('💥 Error fatal detectado');
+
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                console.log('🌐 Error de red');
+                                handleNetworkError(data);
+                                break;
+
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                console.log('🎬 Error de media');
+                                hls.recoverMediaError();
+                                break;
+
+                            default:
+                                console.error('❌ Error no recuperable');
+                                showOffline('Error crítico: ' + data.details);
+                                setTimeout(() => initPlayer(), 5000);
+                                break;
+                        }
+                    }
+                });
+
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // Safari nativo
+                console.log('✅ Safari HLS nativo');
+                video.src = hlsUrl;
+
+                video.addEventListener('loadedmetadata', function () {
+                    console.log('✅ Metadata cargada');
+                    hideOffline();
+                    video.play();
+                });
+
+                video.addEventListener('error', function (e) {
+                    console.error('❌ Error en video:', e);
+                    showOffline('Error al cargar el stream');
+                    setTimeout(() => initPlayer(), 5000);
+                });
+            } else {
+                console.error('❌ HLS no soportado en este navegador');
+                showOffline('Tu navegador no soporta HLS streaming');
+            }
+        }
+
+        function handleNetworkError(data) {
+            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                reconnectAttempts++;
+                attemptCount.textContent = reconnectAttempts;
+
+                const delay = Math.min(1000 * reconnectAttempts, 10000); // Max 10s
+                console.log(`🔄 Reintentando en ${delay}ms (intento ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+
+                showOffline(`Reconectando... (Intento ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+
+                setTimeout(() => {
+                    hls.startLoad();
+                }, delay);
+            } else {
+                console.error('❌ Máximo de reintentos alcanzado');
+                showOffline('No se pudo conectar al stream. Verifica que la transmisión esté activa.');
+
+                // Reiniciar contador después de 30s
+                setTimeout(() => {
+                    reconnectAttempts = 0;
+                    initPlayer();
+                }, 30000);
+            }
+        }
+
+        function showOffline(message) {
+            offlineMsg.style.display = 'flex';
+            video.style.display = 'none';
+
+            if (message) {
+                document.getElementById('reconnect-status').textContent = message;
+            }
+        }
+
+        function hideOffline() {
+            offlineMsg.style.display = 'none';
+            video.style.display = 'block';
+        }
+
+        // Detectar cuando el usuario vuelve al tab
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden && hls && video.buffered.length > 0) {
+                console.log('👁️ Usuario regresó - sincronizando con live edge');
+                const bufferEnd = video.buffered.end(video.buffered.length - 1);
+                video.currentTime = bufferEnd - 2;
+            }
+        });
+
+        // Log de estado cada 30s
+        setInterval(() => {
+            if (video.paused) {
+                console.log('⏸️ Video pausado');
+            } else {
+                const buffered = video.buffered;
+                if (buffered.length > 0) {
+                    const bufferLength = buffered.end(0) - video.currentTime;
+                    console.log(`📊 Buffer: ${bufferLength.toFixed(2)}s | Time: ${video.currentTime.toFixed(2)}s`);
+                }
+            }
+        }, 30000);
+    </script>
+</body>
+
+</html>
