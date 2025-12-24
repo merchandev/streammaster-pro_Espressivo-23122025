@@ -23,13 +23,10 @@ Clave de Stream: mistream
 
 - **Servicio:** Personalizado (Custom)
 - **Servidor:** `rtmp://72.62.86.94:1935/live`
-- **Clave de emisión:** `mistream`
+   - **Clave de Transmisión (Stream Key):** `M0nagas_Live_Secure_2025`
+   - **Autenticación:** Deshabilitada (dejar en blanco usuario/contraseña)
 
-![Configuración de Emisión](https://i.imgur.com/example.png)
-
-### 3. Configurar Video
-
-En **Ajustes → Salida → Transmisión:**
+3. **Configuración de Salida (Output):**Ajustes → Salida → Transmisión:**
 
 #### Configuración Recomendada (720p)
 
