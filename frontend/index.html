@@ -67,14 +67,14 @@
                 <div class="input-group">
                     <label>URL del Servidor (Server):</label>
                     <div class="copy-input">
-                        <input type="text" value="rtmp://72.62.86.94:1935/live" readonly id="rtmp-url">
+                        <input type="text" id="rtmp-url" readonly>
                         <button class="btn-copy" onclick="copy('rtmp-url')">Copiar</button>
                     </div>
                 </div>
                 <div class="input-group">
                     <label>Clave de Transmisión (Stream Key):</label>
                     <div class="copy-input">
-                        <input type="text" value="mistream" readonly id="stream-key">
+                        <input type="text" value="M0nagas_Live_Secure_2025" readonly id="stream-key">
                         <button class="btn-copy" onclick="copy('stream-key')">Copiar</button>
                     </div>
                 </div>
@@ -97,6 +97,13 @@
     </footer>
 
     <script>
+        // Configuración Dinámica
+        const host = window.location.hostname;
+
+        // RTMP URL (siempre puerto 1935)
+        document.getElementById('rtmp-url').value = `rtmp://${host}:1935/live`;
+
+        // Player URL
         document.getElementById('player-url').value = window.location.origin + '/player.html';
 
         function copy(id) {
