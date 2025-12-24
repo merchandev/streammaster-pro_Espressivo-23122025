@@ -25,7 +25,14 @@
         <!-- Video Element -->
         <video id="video-player" playsinline muted autoplay poster="assets/poster.jpg"></video>
 
-        <!-- Overlay -->
+        <!-- Unmute Overlay (Nuevo) -->
+        <div id="unmute-overlay" class="unmute-overlay" onclick="unmuteVideo()">
+            <button class="unmute-btn">
+                <i class="fas fa-volume-up"></i> Activar Sonido
+            </button>
+        </div>
+
+        <!-- Overlay de Carga / Offline -->
         <div id="offline-overlay" class="overlay">
             <div class="overlay-content">
                 <div class="pulse-ring"></div>
@@ -54,7 +61,7 @@
                     <button class="control-btn" id="btn-mute" onclick="toggleMute()">
                         <i class="fas fa-volume-up" id="icon-volume"></i>
                     </button>
-                    <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="1">
+                    <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0">
                 </div>
             </div>
 
@@ -80,14 +87,17 @@
         // REFERENCIAS
         const video = document.getElementById('video-player');
         const overlay = document.getElementById('offline-overlay');
+        const unmuteOverlay = document.getElementById('unmute-overlay');
         const statusTitle = document.getElementById('status-title');
         const statusDesc = document.getElementById('status-desc');
         const reconnectBox = document.getElementById('reconnect-box');
         const attemptSpan = document.getElementById('attempt-count');
+        const container = document.getElementById('player-container');
 
         // ICONOS
         const iconToggle = document.getElementById('icon-toggle');
         const iconVolume = document.getElementById('icon-volume');
+        const volSlider = document.getElementById('volume-slider');
 
         let hls = null;
         let isPlaying = false;
@@ -111,6 +121,15 @@
             statusDesc.textContent = "Buscando señal de transmisión...";
             overlay.style.display = 'flex';
             reconnectBox.style.display = 'none';
+
+            // Mostrar el botón de unmute si está muted
+            if (video.muted) {
+                unmuteOverlay.style.display = 'flex';
+                volSlider.value = 0;
+            } else {
+                unmuteOverlay.style.display = 'none';
+                volSlider.value = video.volume;
+            }
 
             if (Hls.isSupported()) {
                 hls = new Hls({
@@ -162,7 +181,11 @@
             if (playPromise !== undefined) {
                 playPromise.then(() => {
                     isPlaying = true;
-                    updateVolIcon(); // Sincronizar icono de volumen (muted por autoplay)
+                    // Si el navegador fuerza mute, asegurar que el UI lo refleje
+                    if (video.muted) {
+                        unmuteOverlay.style.display = 'flex';
+                        updateVolIcon();
+                    }
                     updateUI(true);
                 }).catch(e => {
                     console.log('Autoplay bloqueado');
@@ -171,6 +194,18 @@
                     updateUI(false);
                 });
             }
+        }
+
+        function unmuteVideo() {
+            video.muted = false;
+            video.volume = 1;
+            volSlider.value = 1;
+            unmuteOverlay.style.opacity = '0';
+            setTimeout(() => {
+                unmuteOverlay.style.display = 'none';
+                unmuteOverlay.style.opacity = '1'; // Reset opacity for next time
+            }, 300);
+            updateVolIcon();
         }
 
         function togglePlayback() {
@@ -246,10 +281,12 @@
         }
 
         // Volumen
-        const volSlider = document.getElementById('volume-slider');
         volSlider.addEventListener('input', (e) => {
             video.volume = e.target.value;
             video.muted = false;
+            if (unmuteOverlay.style.display !== 'none') {
+                unmuteVideo();
+            }
             updateVolIcon();
         });
 
@@ -264,11 +301,23 @@
             else iconVolume.className = 'fas fa-volume-up';
         }
 
+        // Pantalla Completa Mejorada (Soporte iPhone/Safari)
         function toggleFullscreen() {
-            if (!document.fullscreenElement) {
-                document.getElementById('player-container').requestFullscreen();
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (container.requestFullscreen) {
+                    container.requestFullscreen();
+                } else if (video.webkitEnterFullscreen) {
+                    // iOS Safari solo permite fullscreen en el elemento VIDEO, no en el contenedor
+                    video.webkitEnterFullscreen();
+                } else if (container.webkitRequestFullscreen) {
+                    container.webkitRequestFullscreen();
+                }
             } else {
-                document.exitFullscreen();
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
             }
         }
     </script>
