@@ -37,7 +37,7 @@ services:
       - ./data/certbot/conf:/etc/letsencrypt
       - ./data/certbot/www:/var/www/certbot
       # Montaje para persistencia de la config SSL
-      - ./nginx/web.conf:/etc/nginx/conf.d/default.conf
+      # - ./nginx/web.conf:/etc/nginx/conf.d/default.conf
     networks:
       - streamnet
     command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
