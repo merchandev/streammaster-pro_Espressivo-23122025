@@ -23,7 +23,7 @@
         </a>
 
         <!-- Video Element -->
-        <video id="video-player" playsinline poster="assets/poster.jpg"></video>
+        <video id="video-player" playsinline muted autoplay poster="assets/poster.jpg"></video>
 
         <!-- Overlay -->
         <div id="offline-overlay" class="overlay">
@@ -162,6 +162,7 @@
             if (playPromise !== undefined) {
                 playPromise.then(() => {
                     isPlaying = true;
+                    updateVolIcon(); // Sincronizar icono de volumen (muted por autoplay)
                     updateUI(true);
                 }).catch(e => {
                     console.log('Autoplay bloqueado');
