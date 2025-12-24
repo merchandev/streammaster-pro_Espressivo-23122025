@@ -13,9 +13,10 @@ echo -e "${GREEN}🔒 Configuración de SSL para StreamMaster Pro${NC}"
 echo "=================================================="
 echo ""
 
-# 1. Solicitar Dominio y Email
-read -p "Ingresa tu dominio (ej: tv.monagasvision.com): " DOMAIN
-read -p "Ingresa tu email (para registro de Let's Encrypt): " EMAIL
+# 1. Configuración Integrada del Proyecto
+DOMAIN="tv.monagasvision.com"
+EMAIL="tv@monagasvision.com"
+echo "Usando configuración integrada: $DOMAIN"
 
 # 2. Sanitizar Input (Eliminar https://, http://, www. extra, y barras)
 DOMAIN=$(echo "$DOMAIN" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
