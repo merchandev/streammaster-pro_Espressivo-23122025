@@ -9,7 +9,7 @@ services:
       - "8080:80" # Puerto HTTP para HLS
     volumes:
       # Solo montar directorios, no archivos individuales
-      - ./data/streams:/tmp/streams
+      # - ./data/streams:/tmp/streams # DESHABILITADO: El montaje oculta la carpeta creada en el build
       - ./logs/nginx:/var/log/nginx
     networks:
       - streamnet
