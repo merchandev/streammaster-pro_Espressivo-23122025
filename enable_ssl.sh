@@ -14,6 +14,8 @@ echo "=================================================="
 echo ""
 
 # 1. Solicitar Dominio y Email
+read -p "Ingresa tu dominio (ej: tv.monagasvision.com): " DOMAIN
+read -p "Ingresa tu email (para registro de Let's Encrypt): " EMAIL
 
 # 2. Sanitizar Input (Eliminar https://, http://, www. extra, y barras)
 DOMAIN=$(echo "$DOMAIN" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
