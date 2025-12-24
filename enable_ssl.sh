@@ -46,6 +46,8 @@ mkdir -p ./data/certbot/www
 
 # 3. Iniciar Nginx
 echo "Reiniciando servidor web para validaciÃ³n..."
+# Limpiar contenedor previo
+$DOCKER_CMD rm -f web >/dev/null 2>&1 || true
 $DOCKER_CMD up -d web
 
 echo "Esperando a que Nginx inicie..."
@@ -56,7 +58,7 @@ echo "Solicitando certificado a Let's Encrypt..."
 $DOCKER_CMD run --rm --entrypoint "\
   certbot certonly --webroot -w /var/www/certbot \
     --email $EMAIL \
-    --d $DOMAIN \
+    -d $DOMAIN \
     --rsa-key-size 4096 \
     --agree-tos \
     --no-eff-email \
