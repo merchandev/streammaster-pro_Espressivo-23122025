@@ -1,13 +1,13 @@
 FROM tiangolo/nginx-rtmp:latest
 
-# Crear directorio para streams
-RUN mkdir -p /tmp/streams/hls
+# Crear directorio para streams con permisos amplios
+RUN mkdir -p /tmp/streams/hls && chmod -R 777 /tmp/streams
 
 # Copiar configuración de nginx
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY stat.xsl /usr/local/nginx/html/stat.xsl
 
-# Asegurar permisos correctos
+# Asegurar permisos de configuración
 RUN chmod 644 /etc/nginx/nginx.conf
 
 # Exponer puertos
