@@ -14,36 +14,44 @@ echo "=================================================="
 echo ""
 
 # 1. Solicitar Dominio y Email
-read -p "Ingresa tu dominio (ej: tv.monagasvision.com): " DOMAIN
-read -p "Ingresa tu email (para registro de Let's Encrypt): " EMAIL
+
+# 2. Sanitizar Input (Eliminar https://, http://, www. extra, y barras)
+DOMAIN=$(echo "$DOMAIN" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
+# Nota: NO eliminamos 'www.' automÃ¡ticamente porque quizÃ¡s el usuario SI quiere usar www.
+EMAIL=$(echo "$EMAIL" | xargs) # Validar espacios
 
 if [ -z "$DOMAIN" ] || [ -z "$EMAIL" ]; then
     echo -e "${RED}Error: Dominio y Email son requeridos.${NC}"
     exit 1
 fi
 
+# Detectar comando Docker Compose
+if command -v docker-compose &> /dev/null; then
+    DOCKER_CMD="docker-compose"
+else
+    DOCKER_CMD="docker compose"
+fi
+
 echo ""
 echo -e "Configurando SSL para: ${GREEN}$DOMAIN${NC}"
-echo "Esto tomará unos minutos..."
+echo -e "Usando comando: ${GREEN}$DOCKER_CMD${NC}"
+echo "Esto tomarÃ¡ unos minutos..."
 echo ""
 
 # 2. Asegurar que los directorios existen
 mkdir -p ./data/certbot/conf
 mkdir -p ./data/certbot/www
 
-# 3. Descargar script recomendado de Certbot (init-letsencrypt) o usar método directo
-# Método Directo Simplificado:
-
-# Paso A: Iniciar Nginx con configuración HTTP básica (ya debe estar corriendo)
-echo "reiniciando servidor web para validación..."
-docker-compose up -d web
+# 3. Iniciar Nginx
+echo "Reiniciando servidor web para validaciÃ³n..."
+$DOCKER_CMD up -d web
 
 echo "Esperando a que Nginx inicie..."
 sleep 5
 
-# Paso B: Solicitar Certificado
+# 4. Solicitar Certificado
 echo "Solicitando certificado a Let's Encrypt..."
-docker-compose run --rm --entrypoint "\
+$DOCKER_CMD run --rm --entrypoint "\
   certbot certonly --webroot -w /var/www/certbot \
     --email $EMAIL \
     --d $DOMAIN \
@@ -53,30 +61,30 @@ docker-compose run --rm --entrypoint "\
     --force-renewal" certbot
 
 if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Error al obtener el certificado. Verifica que tu dominio apunte a este servidor.${NC}"
+    echo -e "${RED}âŒ Error al obtener el certificado. Verifica que tu dominio apunte a este servidor.${NC}"
+    echo -e "${RED}Dominio detectado: $DOMAIN${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✅ Certificado obtenido correctamente.${NC}"
+echo -e "${GREEN}âœ… Certificado obtenido correctamente.${NC}"
 
-# 4. Configurar Nginx para usar SSL
-echo "Aplicando configuración HTTPS..."
+# 5. Configurar Nginx para usar SSL
+echo "Aplicando configuraciÃ³n HTTPS..."
 
 # Reemplazar variables en template
 sed "s/\${DOMAIN}/$DOMAIN/g" nginx/web-ssl.conf.template > nginx/web-ssl.conf
 
-# Reemplazar configuración activa (web.conf) con la versión SSL (web-ssl.conf)
-# Hacemos esto copiando el contenido, para que el volumen montado lo vea
+# Reemplazar configuraciÃ³n activa
 cat nginx/web-ssl.conf > nginx/web.conf
 
-# 5. Recargar Nginx
+# 6. Recargar Nginx
 echo "Recargando servidor web..."
-docker-compose exec web nginx -s reload
+$DOCKER_CMD exec web nginx -s reload
 
 echo ""
 echo "=================================================="
-echo -e "${GREEN}🎉 ¡HTTPS Habilitado!${NC}"
+echo -e "${GREEN}ðŸŽ‰ Â¡HTTPS Habilitado!${NC}"
 echo "=================================================="
 echo "Accede ahora a: https://$DOMAIN"
 echo ""
-echo "Nota: El certificado se renovará automáticamente."
+echo "Nota: El certificado se renovarÃ¡ automÃ¡ticamente."
