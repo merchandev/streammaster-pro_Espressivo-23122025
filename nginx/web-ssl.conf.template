@@ -1,0 +1,41 @@
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name ${DOMAIN};
+
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+
+    root /usr/share/nginx/html;
+    index index.html player.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    # HLS Proxy (HTTPS -> HTTP Internal)
+    location /hls {
+        proxy_pass http://rtmp-server:8080/hls;
+        proxy_set_header Host $host;
+        
+        # Headers para CORS y SSL
+        add_header Access-Control-Allow-Origin *;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    location /stat {
+        proxy_pass http://rtmp-server:8080/stat;
+    }
+}
