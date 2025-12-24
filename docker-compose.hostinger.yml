@@ -9,7 +9,7 @@ services:
     ports:
       - "1935:1935" # Puerto RTMP para encoders
       - "8080:80" # Puerto HTTP para HLS
-    volumes:
+      # volumes:
       # Solo montar directorios, no archivos individuales
       # - ./data/streams:/tmp/streams # DESHABILITADO: El montaje oculta la carpeta creada en el build
       # - ./logs/nginx:/var/log/nginx # DESHABILITADO: Posible conflicto de permisos
