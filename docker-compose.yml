@@ -24,14 +24,14 @@ services:
   # Servidor web simple para el player
   web:
     build:
-      context: ./nginx
-      dockerfile: Dockerfile.web
+      context: .
+      dockerfile: nginx/Dockerfile.web
     container_name: streammaster-web
     restart: unless-stopped
     ports:
       - "80:80"
-    volumes:
-      - ./frontend:/usr/share/nginx/html:ro
+    # Volúmenes eliminados para evitar problemas de permisos/montaje en Hostinger
+    # La configuración y el frontend ahora están "horneados" en la imagen
     networks:
       - streamnet
 
