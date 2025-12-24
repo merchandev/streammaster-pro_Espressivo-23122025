@@ -12,7 +12,12 @@
 
 <body>
     <div id="player-container">
-        <!-- Botón Volver -->
+        <!-- Live Badge -->
+        <div class="live-indicator">
+            <span class="dot"></span> EN VIVO
+        </div>
+
+        <!-- Home Button -->
         <a href="index.html" class="home-btn">
             <i class="fas fa-arrow-left"></i> Inicio
         </a>
@@ -20,7 +25,7 @@
         <!-- Video Element -->
         <video id="video-player" playsinline poster="assets/poster.jpg"></video>
 
-        <!-- Overlay de Carga / Offline -->
+        <!-- Overlay -->
         <div id="offline-overlay" class="overlay">
             <div class="overlay-content">
                 <div class="pulse-ring"></div>
@@ -37,30 +42,14 @@
             </div>
         </div>
 
-        <!-- Controles Superiores -->
-        <div class="top-controls">
-            <div class="live-indicator">
-                <span class="dot"></span> EN VIVO
-            </div>
-            <div class="viewer-count" style="display: none;">
-                <i class="fas fa-eye"></i> <span id="viewers">0</span>
-            </div>
-        </div>
-
-        <!-- Controles Inferiores (Nuevo Diseño) -->
+        <!-- New Glass Controls -->
         <div class="controls-bar">
-            <!-- Botón Play/Pause Gigante -->
-            <button id="btn-toggle" class="control-btn big-btn" onclick="togglePlayback()">
-                <i class="fas fa-play" id="icon-toggle"></i>
-            </button>
-
+            <!-- Left Group -->
             <div class="controls-group">
-                <!-- Botón Reiniciar -->
-                <button class="control-btn" onclick="reloadStream()" title="Reiniciar Stream">
-                    <i class="fas fa-sync-alt"></i>
+                <button id="btn-toggle" class="control-btn big-btn" onclick="togglePlayback()">
+                    <i class="fas fa-play" id="icon-toggle"></i>
                 </button>
 
-                <!-- Volumen -->
                 <div class="volume-control">
                     <button class="control-btn" id="btn-mute" onclick="toggleMute()">
                         <i class="fas fa-volume-up" id="icon-volume"></i>
@@ -69,7 +58,11 @@
                 </div>
             </div>
 
-            <div class="controls-group right">
+            <!-- Right Group -->
+            <div class="controls-group">
+                <button class="control-btn" onclick="reloadStream()" title="Recargar señal">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
                 <button class="control-btn" onclick="toggleFullscreen()" title="Pantalla Completa">
                     <i class="fas fa-expand"></i>
                 </button>
@@ -101,12 +94,17 @@
         let retryCount = 0;
         const MAX_RETRIES = 10;
 
-        // INICIAR
-        initPlayer();
+        // Limpiar estado previo al cargar
+        window.addEventListener('load', () => {
+            stopStream();
+            setTimeout(initPlayer, 100);
+        });
 
         function initPlayer() {
+            // Asegurar limpieza total antes de iniciar
             if (hls) {
                 hls.destroy();
+                hls = null;
             }
 
             statusTitle.textContent = "Conectando...";
@@ -119,12 +117,7 @@
                     debug: false,
                     enableWorker: true,
                     lowLatencyMode: true,
-                    backBufferLength: 10,
-                    // Optimizaciones de recuperación
-                    manifestLoadingTimeOut: 10000,
-                    manifestLoadingMaxRetry: 5,
-                    levelLoadingMaxRetry: 5,
-                    fragLoadingMaxRetry: 5
+                    backBufferLength: 0, // No guardar buffer pasado para evitar loops de audio
                 });
 
                 hls.loadSource(hlsUrl);
@@ -165,21 +158,24 @@
         }
 
         function playVideo() {
-            video.play().then(() => {
-                isPlaying = true;
-                updateUI(true);
-            }).catch(e => {
-                console.log('Autoplay bloqueado');
-                statusTitle.textContent = "Listo para reproducir";
-                statusDesc.textContent = "Haz clic en Play para comenzar";
-                updateUI(false);
-            });
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    isPlaying = true;
+                    updateUI(true);
+                }).catch(e => {
+                    console.log('Autoplay bloqueado');
+                    statusTitle.textContent = "Listo para reproducir";
+                    statusDesc.textContent = "Haz clic en Play para comenzar";
+                    updateUI(false);
+                });
+            }
         }
 
         function togglePlayback() {
             if (video.paused) {
                 if (!hls && !video.src) {
-                    initPlayer(); // Si estaba "apagado" (stop), reinicia
+                    initPlayer();
                 } else {
                     video.play();
                 }
@@ -191,24 +187,25 @@
             updateUI(isPlaying);
         }
 
-        // Función "Apagar/Encender" solicitada
+        // Función CRÍTICA para evitar audio duplicado
         function stopStream() {
             if (hls) {
-                hls.destroy();
+                hls.stopLoad(); // Detener carga de red
+                hls.detachMedia(); // Separar del video
+                hls.destroy(); // Destruir instancia
                 hls = null;
             }
             video.pause();
-            video.removeAttribute('src'); // Limpiar source
-            video.load();
+            video.removeAttribute('src'); // Quitar fuente
+            video.load(); // Forzar al navegador a soltar el buffer
             isPlaying = false;
             updateUI(false);
-            showOffline("Stream Detenido", "Pulsa Play para reconectar");
         }
 
         function reloadStream() {
-            console.log('Recargando stream...');
             stopStream();
-            setTimeout(initPlayer, 500);
+            // Pequeño delay para asegurar que el navegador limpie memoria
+            setTimeout(initPlayer, 200);
         }
 
         function handleNetworkError() {
@@ -220,6 +217,7 @@
                 statusDesc.textContent = "Intentando reconectar...";
 
                 setTimeout(() => {
+                    // Reintentar reiniciando completamente
                     if (hls) hls.startLoad();
                     else initPlayer();
                 }, 2000);
@@ -242,7 +240,6 @@
                 overlay.style.display = 'none';
                 iconToggle.className = 'fas fa-pause';
             } else {
-                // Si solo está pausado pero hay stream, no mostramos overlay completo, solo botón
                 iconToggle.className = 'fas fa-play';
             }
         }
