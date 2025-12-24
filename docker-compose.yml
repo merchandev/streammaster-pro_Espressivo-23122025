@@ -23,16 +23,17 @@ services:
 
   # Servidor web que actuará como Proxy Inverso y SSL Termination
   web:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile.web
     container_name: streammaster-web
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./frontend:/usr/share/nginx/html:ro
-      - ./nginx/web.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./nginx/stat.xsl:/usr/local/nginx/html/stat.xsl:ro
+      # Config y frontend ya están copiados en la imagen (Dockerfile.web)
+      # Mantenemos solo los volúmenes de Certbot
       - ./data/certbot/conf:/etc/letsencrypt
       - ./data/certbot/www:/var/www/certbot
     networks:
