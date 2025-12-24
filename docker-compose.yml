@@ -10,7 +10,7 @@ services:
     volumes:
       # Solo montar directorios, no archivos individuales
       # - ./data/streams:/tmp/streams # DESHABILITADO: El montaje oculta la carpeta creada en el build
-      - ./logs/nginx:/var/log/nginx
+      # - ./logs/nginx:/var/log/nginx # DESHABILITADO: Posible conflicto de permisos
     networks:
       - streamnet
     deploy:
