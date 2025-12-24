@@ -1,12 +1,19 @@
 FROM nginx:alpine
 
-# Copiar configuración personalizada (ruta relativa al contexto de build que será la raíz del proyecto)
+# Copiar configuración personalizada
 COPY nginx/web.conf /etc/nginx/conf.d/default.conf
 
-# Copiar archivos del frontend directamente a la imagen
+# Eliminar archivos default de nginx
+RUN rm -rf /usr/share/nginx/html/*
+
+# Copiar archivos del frontend
+# Nota: Copiamos el contenido de la carpeta frontend a la raíz de html
 COPY frontend/ /usr/share/nginx/html/
 
-# Asegurar permisos correctos
+# Verificar archivos copiados durante el build (para debug)
+RUN ls -la /usr/share/nginx/html/
+
+# Asegurar permisos
 RUN chmod -R 755 /usr/share/nginx/html
 
 EXPOSE 80
