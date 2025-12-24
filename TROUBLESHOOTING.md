@@ -179,6 +179,37 @@ Si aún ves 403:
 - Reconstruir todo: `docker-compose down && docker-compose up -d --build`
 - Ver logs: `docker logs streammaster-web --tail 50`
 
+- Ver logs: `docker logs streammaster-web --tail 50`
+
+---
+
+### Problema 4: Error 404 en el Stream (SOLUCIONADO)
+
+**Síntomas:**
+- El player muestra "Señal Perdida" o pantalla negra.
+- Los logs del RTMP muestran: `open() "/tmp/streams/hls/mistream.m3u8" failed (2: No such file or directory)`.
+
+**Causa:**
+- Nginx estaba configurado con `hls_nested on` (creando `/mistream/index.m3u8`) pero el player buscaba `/mistream.m3u8`.
+- **Desincronización de Despliegue:** Se actualizó el código (`git pull`) pero NO se reconstruyó el contenedor, por lo que Nginx seguía usando la configuración vieja.
+
+**Solución:**
+Es necesario reconstruir el contenedor para que aplique el cambio de `nginx.conf`.
+
+```bash
+cd /docker/streammaster-pro
+git pull origin main
+
+# Detener contenedores
+docker-compose down
+
+# 🔥 CRÍTICO: Reconstruir imagen para actualizar nginx.conf
+docker-compose up -d --build rtmp-server
+
+# Verificar logs
+docker-compose logs -f rtmp-server
+```
+
 ---
 
 ## 🚀 Script de Solución Rápida
